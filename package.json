@@ -1,0 +1,19 @@
+{
+  "name": "pi-live-compact",
+  "version": "0.1.0",
+  "description": "Cut finished Pi tool results in place. No model call. Leave the prefix before the cut unchanged.",
+  "license": "MIT",
+  "type": "module",
+  "author": "MerkyorLynn <268568828+MerkyorLynn@users.noreply.github.com>",
+  "keywords": ["pi-package", "pi-extension", "compaction"],
+  "files": ["src", "README.md", "CHANGELOG.md", "LICENSE"],
+  "scripts": {
+    "test": "node --test test/plan.test.mjs"
+  },
+  "pi": {
+    "extensions": ["./src/extension.js"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
