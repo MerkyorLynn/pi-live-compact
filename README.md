@@ -33,6 +33,18 @@ pi -e git:github.com/MerkyorLynn/pi-live-compact
 
 65 万、3.2 万、1000、保留 3 轮，都沿用 DSH 插件，没有新门槛。
 
+## 测评
+
+2026-11-13，Pi 1.5.2，GLM-5.3 Flash，同一段对话跑完 Aider Polyglot 150。题目顺序和固定提交 `7e0611e` 跟 DSH 仓库头图一样。没有跑 Pi 自带压缩对照。
+
+补开跳过的测试之后，通过 141/150。Python 30/30，Go 30/30，JavaScript 29/30，Rust 30/30，Java 22/30。缓存命中 15.27M，未命中输入 0.147M，命中率 99.05%。上下文峰值 183607。本地切刀 19。会话墙钟 9466 秒。
+
+会话当时的判分是 145/150，另有 1 道 Java 当时没装 JDK。那场判分没有打开 Rust 的 `#[ignore]` 和 Java 的 `@Disabled`。上面的 141/150 是同一批解答、补开这些测试之后的结果，没有再让模型重做。
+
+20 道 Web-Bench 长题还没跑。数字在 [docs/aider-150-results.json](docs/aider-150-results.json)。
+
+![Aider 150](docs/slide-pi-aider-150.jpg)
+
 ## 还没搬过来的
 
 DSH 的 Windows 权限、预设替换、雷霆摘要、服务商地址判断，不在这个扩展里。Pi 窗口快满时的那次模型摘要仍由 Pi 自己做。
