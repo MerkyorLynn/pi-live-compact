@@ -90,6 +90,14 @@ export function shouldDrain(totalTokens, drain = false) {
   return drain === true || (typeof totalTokens === "number" && totalTokens >= URGENT_TOKENS);
 }
 
+export function lastUserIndex(entries) {
+  let found = -1;
+  entries.forEach((entry, index) => {
+    if (entry.message?.role === "user") found = index;
+  });
+  return found;
+}
+
 export function selectCuts(entries, options = {}) {
   const totalTokens = options.totalTokens ?? 0;
   if (totalTokens >= BIG_GATE) return [];
@@ -99,8 +107,10 @@ export function selectCuts(entries, options = {}) {
     return isCard(text) ? index : found;
   }, -1);
   const rounds = roundsFromProjection(entries);
+  const userAt = lastUserIndex(entries);
   const finished = rounds.filter((round) => round.results.length > 0);
-  const candidates = finished.slice(0, Math.max(0, finished.length - KEEP_ROUNDS));
+  const closed = userAt < 0 ? finished : finished.filter((round) => round.end < userAt);
+  const candidates = closed.slice(0, Math.max(0, closed.length - KEEP_ROUNDS));
   const cuts = [];
   for (const round of candidates) {
     if (round.end <= floor) continue;

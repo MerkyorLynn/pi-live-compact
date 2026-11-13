@@ -90,6 +90,22 @@ test("a 32000-token result becomes a pointer and a failed result stays whole", (
   assert.ok(estimateTokens(huge) >= POINTER_TOKENS);
 });
 
+function user(text) {
+  return [{ sourceId: `user-${text}`, message: { role: "user", content: text } }];
+}
+
+test("does not cut tool results from the current user turn", () => {
+  const text = "x".repeat(8000);
+  const entries = indexed([
+    user("上一题"),
+    ...[1, 2, 3, 4].map((n) => round(`old${n}`, "bash", text)),
+    user("这一题"),
+    ...[1, 2, 3, 4].map((n) => round(`now${n}`, "bash", text)),
+  ]);
+  const cuts = selectCuts(entries, { totalTokens: 48000 });
+  assert.deepEqual(cuts.map((cut) => cut.targetId), ["old1"]);
+});
+
 test("does not cut before the 48000 urgent line", () => {
   const text = "x".repeat(8000);
   const entries = indexed([1, 2, 3, 4].map((n) => round(`r${n}`, "bash", text)));

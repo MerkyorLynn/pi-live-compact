@@ -1,6 +1,6 @@
 {
   "name": "pi-live-compact",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Cut finished Pi tool results in place. No model call. Leave the prefix before the cut unchanged.",
   "license": "MIT",
   "type": "module",
