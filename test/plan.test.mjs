@@ -37,7 +37,7 @@ function indexed(parts) {
 test("keeps the last three tool rounds raw", () => {
   const text = "x".repeat(8000);
   const entries = indexed([1, 2, 3, 4].map((n) => round(`r${n}`, "bash", text)));
-  const cuts = selectCuts(entries, { totalTokens: 20000 });
+  const cuts = selectCuts(entries, { totalTokens: 48000 });
   assert.deepEqual(cuts.map((cut) => cut.targetId), ["r1"]);
 });
 
@@ -55,7 +55,7 @@ test("a long read is cut inside its own round", () => {
     round("keep2", "bash", "short"),
     round("keep3", "bash", "short"),
   ]);
-  const cuts = selectCuts(entries, { totalTokens: 30000 });
+  const cuts = selectCuts(entries, { totalTokens: 48000 });
   assert.deepEqual(cuts.map((cut) => cut.toolName), ["read"]);
   assert.equal(cuts[0].targetId, "old");
 });
@@ -70,7 +70,7 @@ test("does not cut left of the newest card", () => {
     round("k2", "bash", "s"),
     round("k3", "bash", "s"),
   ]);
-  const cuts = selectCuts(entries, { totalTokens: 20000 });
+  const cuts = selectCuts(entries, { totalTokens: 48000 });
   assert.deepEqual(cuts.map((cut) => cut.targetId), ["mid"]);
 });
 
@@ -83,11 +83,18 @@ test("a 32000-token result becomes a pointer and a failed result stays whole", (
     round("k2", "bash", "s"),
     round("k3", "bash", "s"),
   ]);
-  const cuts = selectCuts(entries, { totalTokens: 40000 });
+  const cuts = selectCuts(entries, { totalTokens: 48000 });
   assert.equal(cuts.length, 1);
   assert.equal(cuts[0].pointer, true);
   assert.match(cuts[0].cardText, /只留指针/);
   assert.ok(estimateTokens(huge) >= POINTER_TOKENS);
+});
+
+test("does not cut before the 48000 urgent line", () => {
+  const text = "x".repeat(8000);
+  const entries = indexed([1, 2, 3, 4].map((n) => round(`r${n}`, "bash", text)));
+  assert.equal(selectCuts(entries, { totalTokens: 47999 }).length, 0);
+  assert.equal(selectCuts(entries, { totalTokens: 48000 }).length, 1);
 });
 
 test("stops small cuts at 650000", () => {

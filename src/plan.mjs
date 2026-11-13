@@ -1,5 +1,6 @@
 export const CHUNK_MIN = 1000;
 export const POINTER_TOKENS = 32000;
+export const URGENT_TOKENS = 48000;
 export const KEEP_ROUNDS = 3;
 export const BIG_GATE = 650000;
 export const CARD_MARK = "spine-checkpoint";
@@ -85,9 +86,14 @@ function resultView(entry) {
   };
 }
 
+export function shouldDrain(totalTokens, drain = false) {
+  return drain === true || (typeof totalTokens === "number" && totalTokens >= URGENT_TOKENS);
+}
+
 export function selectCuts(entries, options = {}) {
   const totalTokens = options.totalTokens ?? 0;
   if (totalTokens >= BIG_GATE) return [];
+  if (!shouldDrain(totalTokens, options.drain)) return [];
   const floor = entries.reduce((found, entry, index) => {
     const text = textOf(entry.message?.content);
     return isCard(text) ? index : found;

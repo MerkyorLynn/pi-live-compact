@@ -1,4 +1,4 @@
-import { selectCuts, applyShadowGate, textOf, estimateTokens, BIG_GATE } from "./plan.mjs";
+import { selectCuts, applyShadowGate, textOf, estimateTokens, BIG_GATE, shouldDrain } from "./plan.mjs";
 import { rememberOriginal } from "./shadow.mjs";
 
 function itemsFromProjection(projection) {
@@ -19,18 +19,42 @@ function projectedTokens(ctx, entries) {
   return entries.reduce((sum, entry) => sum + estimateTokens(textOf(entry.message?.content)), 0);
 }
 
+function usageOf(ctx) {
+  const usage = ctx.getContextUsage?.();
+  if (!usage || !Number.isFinite(usage.tokens)) return null;
+  return usage;
+}
+
+function cutsFor(ctx) {
+  const projection = ctx.sessionManager?.buildSessionProjection?.();
+  const entries = itemsFromProjection(projection);
+  if (!entries.length) return [];
+  const usage = usageOf(ctx);
+  const totalTokens = usage?.tokens ?? projectedTokens(ctx, entries);
+  if (!shouldDrain(totalTokens) || totalTokens >= BIG_GATE) return [];
+  const sessionId = ctx.sessionManager.getSessionId?.() || "session";
+  return applyShadowGate(selectCuts(entries, { totalTokens, drain: true }), (cut) => rememberOriginal(cut, sessionId));
+}
+
 export default function piLiveCompact(pi) {
+  pi.on("session_before_compact", (event, ctx) => {
+    try {
+      if (event?.reason === "overflow") return;
+      const usage = usageOf(ctx);
+      const tokens = usage?.tokens;
+      const window = usage?.contextWindow;
+      if (!Number.isFinite(tokens) || tokens >= BIG_GATE) return;
+      if (Number.isFinite(window) && tokens + 8192 >= window) return;
+      return { cancel: true };
+    } catch {
+      return;
+    }
+  });
+
   pi.on("turn_end", (event, ctx) => {
     try {
       if (event?.outcome && event.outcome !== "completed") return;
-      const projection = ctx.sessionManager?.buildSessionProjection?.();
-      const entries = itemsFromProjection(projection);
-      if (!entries.length) return;
-      const totalTokens = projectedTokens(ctx, entries);
-      if (totalTokens >= BIG_GATE) return;
-      const cuts = selectCuts(entries, { totalTokens });
-      const sessionId = ctx.sessionManager.getSessionId?.() || "session";
-      const accepted = applyShadowGate(cuts, (cut) => rememberOriginal(cut, sessionId));
+      const accepted = cutsFor(ctx);
       if (!accepted.length) return;
       return {
         entries: [
