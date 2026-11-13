@@ -37,20 +37,6 @@ function cutsFor(ctx) {
 }
 
 export default function piLiveCompact(pi) {
-  pi.on("session_before_compact", (event, ctx) => {
-    try {
-      if (event?.reason === "overflow") return;
-      const usage = usageOf(ctx);
-      const tokens = usage?.tokens;
-      const window = usage?.contextWindow;
-      if (!Number.isFinite(tokens) || tokens >= BIG_GATE) return;
-      if (Number.isFinite(window) && tokens + 8192 >= window) return;
-      return { cancel: true };
-    } catch {
-      return;
-    }
-  });
-
   pi.on("turn_end", (event, ctx) => {
     try {
       if (event?.outcome && event.outcome !== "completed") return;
