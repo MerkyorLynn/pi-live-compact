@@ -1,5 +1,7 @@
 # Pi Live Compact
 
+![Pi GLM-5.3 Flash benchmark](docs/benchmark-pi-glm53-2026-11-14.png)
+
 边做边压的 Pi 扩展。一轮结束就检查刚结束的工具结果。够长就在本机收成卡片，不调用模型。切点前面的原文不动。
 
 对应的 DSH 插件是 [dsh-live-compact](https://github.com/Tranquillitatis-Lab/dsh-live-compact)。当前已发布的是 1.1.5。PR 46 还开着，合并后会是 1.1.6。这个扩展按 1.1.5 的切法来，并带上 PR 46 里「同一调用编号、内容变了就不要切」的那条。
