@@ -1,16 +1,12 @@
 {
-  "title": "Pi Live Compact STEP5 long-task benchmark",
+  "title": "Pi Live Compact STEP5 Preview long-task benchmark",
   "date": "2026-11-14",
   "status": "complete",
-  "scope": "Pi only; this report is separate from DSH Live Compact benchmark data.",
+  "scope": "Pi only; do not mix with DSH Live Compact scores.",
   "benchmark": {
     "taskCount": 20,
-    "selectionFile": "/tmp/pi-webuniverse-long20-selection.json",
-    "selectionSha256": "ea09f82fbba55d1166a867b1ba2cef2cce6ccd60d0988514bfc633ad45cbea56",
-    "runner": "/tmp/pi-lc-host/run-pi-webuniverse20.mjs",
-    "runnerSha256": "430929e48e5197ca0c1fb0b3b105b1c87f16b6339405f34acc55fbc800fdd387",
-    "fixtures": "/tmp/pi-webuniverse-long20-fixtures",
-    "grader": "each task tests/verifier.py with its rubric.json",
+    "selection": "/tmp/pi-webuniverse-long20-selection.json",
+    "grader": "same fixture and verifier.py/rubric.json across arms",
     "imagesPublished": false
   },
   "model": {
@@ -23,10 +19,7 @@
   "arms": {
     "stock": {
       "label": "Pi stock (no extension)",
-      "agent": "/tmp/pi-lc-agent-step5-stock-web20",
       "sourceCommit": "1b0a669",
-      "extension": null,
-      "progressLocal": "/tmp/pi-bench/pi-webuniverse20-step5-stock-web20/progress.jsonl",
       "summary": {
         "tasksCompleted": 20,
         "fullTaskPasses": 13,
@@ -40,8 +33,9 @@
         "cacheHitRate": 0.9924902611085563,
         "maxObservedTotalTokens": 673483,
         "actualCuts": 0,
+        "contextEdits": 0,
         "elapsedSeconds": 7222,
-        "allClean": true,
+        "mustPassFailures": 0,
         "allGradeRcZero": true
       },
       "tasks": [
@@ -369,14 +363,11 @@
     },
     "plugin": {
       "label": "Pi + Live Compact experimental start-20k",
-      "agent": "/tmp/pi-lc-agent-step5-web20",
       "sourceCommit": "1b0a669",
       "branch": "exp/start-20k (dirty worktree; not published)",
-      "extension": "/tmp/pi-live-compact-start20k/src/extension.js",
       "urgentTokens": 20000,
       "keepRounds": 3,
       "bigGate": 650000,
-      "progressLocal": "/tmp/pi-bench/pi-webuniverse20-step5-start20k-openai/progress.jsonl",
       "summary": {
         "tasksCompleted": 20,
         "fullTaskPasses": 14,
@@ -390,8 +381,9 @@
         "cacheHitRate": 0.9871379399951696,
         "maxObservedTotalTokens": 590380,
         "actualCuts": 44,
+        "contextEdits": 44,
         "elapsedSeconds": 7306,
-        "allClean": true,
+        "mustPassFailures": 0,
         "allGradeRcZero": true
       },
       "tasks": [
@@ -719,21 +711,21 @@
     }
   },
   "definitions": {
-    "fullTaskPasses": "A task passes only when every verifier check for that task passes.",
-    "rubric": "Sum of passed verifier checks across all tasks; rubricPassRate is passed/checks.",
-    "reward": "Sum of each task verifier reward; each task is normalized independently, so maximum is the task count (20).",
-    "cacheHitRate": "cacheReadTokens / (cacheReadTokens + inputTokens).",
-    "maxObservedTotalTokens": "Maximum cumulative usage peak recorded by the runner for an arm; not a claim about provider context capacity.",
-    "actualCuts": "Context edits with a non-null replacement; stock has no extension cuts.",
-    "partialRuns": "A partial arm must not be compared as a final 20-task score."
+    "fullTaskPasses": "all verifier checks for a task pass",
+    "rubric": "sum of passed verifier checks / all checks",
+    "reward": "sum of per-task normalized verifier rewards; maximum 20",
+    "mustPassFailures": "tasks where verifier clean=false because one or more must_pass checks failed",
+    "cacheHitRate": "cacheReadTokens / (cacheReadTokens + inputTokens)",
+    "maxObservedTotalTokens": "maximum runner usage peak; not provider context capacity",
+    "actualCuts": "context edits with non-null replacements"
   },
   "comparison": {
     "fullTaskDeltaPluginMinusStock": 1,
-    "rubricPassedDeltaPluginMinusStock": -15,
+    "rubricDeltaPluginMinusStock": -15,
     "rewardDeltaPluginMinusStock": -0.6860569985569995,
-    "maxObservedTokensDeltaPluginMinusStock": -83103,
-    "maxObservedTokensReductionFraction": 0.12339286960472651,
-    "cacheHitRateDeltaPluginMinusStock": -0.005352321113386682,
-    "interpretation": "Same model and same 20-task verifier. Plugin lowers the observed peak and creates real cuts, while this run has fewer rubric checks and lower reward; this is evidence for a waterline/accuracy tradeoff, not a release claim."
+    "peakDeltaPluginMinusStock": -83103,
+    "peakReductionFraction": 0.12339286960472651,
+    "cacheHitDeltaPluginMinusStock": -0.005352321113386682,
+    "interpretation": "Pi-only comparison; plugin lowers or changes observed waterline and introduces real cuts, while accuracy effects must be read from Rubric, Reward, and must-pass failures."
   }
 }

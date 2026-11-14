@@ -1,6 +1,8 @@
 # Pi Live Compact
 
-![Pi GLM-5.3 Flash benchmark](docs/benchmark-pi-glm53-2026-11-14.png)
+![Pi model benchmark](docs/benchmark-pi-models-2026-11-14.png)
+
+测评报告： [GLM-5.3 Flash](docs/benchmark-pi-glm53-2026-11-14.md) · [STEP5](docs/benchmark-pi-step5-2026-11-14.md) · [DeepSeek V4.1 Flash](docs/benchmark-pi-dsv41-2026-11-14.md)
 
 边做边压的 Pi 扩展。一轮结束就检查刚结束的工具结果。够长就在本机收成卡片，不调用模型。切点前面的原文不动。
 
