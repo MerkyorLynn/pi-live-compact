@@ -4,6 +4,8 @@
 
 最新 GLM-5.3 Flash release-gate 报告： [逐题 Markdown](docs/benchmark-pi-glm53-0.1.4-2026-11-16.md) · [结构化 JSON](docs/benchmark-pi-glm53-0.1.4-2026-11-16.json)
 
+发布后非阻断 STEP5 观察： [逐题 Markdown](docs/benchmark-pi-step5-postrelease-2026-11-16.md) · [结构化 JSON](docs/benchmark-pi-step5-postrelease-2026-11-16.json)
+
 历史模型记录： [STEP5](docs/benchmark-pi-step5-2026-11-14.md) · [DeepSeek V4.1 Flash](docs/benchmark-pi-dsv41-2026-11-14.md) · [旧 GLM 记录（非本版发布证据）](docs/benchmark-pi-glm53-2026-11-14.md)
 
 边做边压的 Pi 扩展。一轮结束就检查已经持久化的旧工具结果。够长就在本机收成卡片，不调用模型。切点前面的原文不动，最近 3 个工具轮保留原文。
