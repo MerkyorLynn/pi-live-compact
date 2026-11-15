@@ -99,11 +99,15 @@ export function roundsFromProjection(entries) {
 function resultView(entry) {
   const message = entry.message;
   const text = textOf(message.content);
+  const images = Array.isArray(message.content)
+    ? message.content.filter((block) => block?.type === "image")
+    : [];
   return {
     targetId: entry.sourceId,
     toolCallId: message.toolCallId || "",
     toolName: message.toolName || "",
     text,
+    images,
     tokens: estimateTokens(text),
     isError: message.isError === true,
     card: isCard(text),
@@ -163,6 +167,13 @@ export function selectCuts(entries, options = {}) {
           arguments: call?.arguments,
         }),
       });
+      const card = cuts[cuts.length - 1];
+      if (view.images.length) {
+        card.replacementContent = [
+          ...view.images,
+          { type: "text", text: card.cardText },
+        ];
+      }
     }
   }
   return cuts;

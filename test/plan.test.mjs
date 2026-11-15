@@ -120,6 +120,31 @@ test("a 32000-token result becomes a pointer and a failed result stays whole", (
   assert.match(cuts[0].cardText, /重读/);
 });
 
+test("preserves image blocks when a mixed tool result is cut", () => {
+  const entries = indexed([
+    call("mixed-image", "read"),
+    {
+      sourceId: "mixed-image",
+      message: {
+        role: "toolResult",
+        toolCallId: "mixed-image",
+        toolName: "read",
+        content: [
+          { type: "text", text: "x".repeat(8000) },
+          { type: "image", data: "aGVsbG8=", mimeType: "image/png" },
+        ],
+        isError: false,
+      },
+    },
+    ...[1, 2, 3].map((n) => round(`keep-image-${n}`, "bash", "short")),
+  ]);
+  const [cut] = selectCuts(entries, { totalTokens: 48000 });
+  assert.equal(cut.targetId, "mixed-image");
+  assert.equal(cut.replacementContent[0].type, "image");
+  assert.equal(cut.replacementContent.at(-1).type, "text");
+  assert.match(cut.replacementContent.at(-1).text, /spine-checkpoint/);
+});
+
 function user(text) {
   return [{ sourceId: `user-${text}`, message: { role: "user", content: text } }];
 }

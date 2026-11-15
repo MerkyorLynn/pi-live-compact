@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -121,4 +121,30 @@ test("writes bounded telemetry without affecting the handler", async () => {
   const updated = readFileSync(process.env.PI_LIVE_COMPACT_LOG, "utf8").trim().split("\n").map(JSON.parse);
   assert.ok(updated.some((event) => event.reason === "stop_length"));
   assert.ok(updated.some((event) => event.event === "compact_failed" && event.error === "test failure"));
+});
+
+test("does not persist shadow plaintext for an in-memory session", async () => {
+  const privacyRoot = mkdtempSync(join(tmpdir(), "pi-lc-extension-privacy-"));
+  const previousShadow = process.env.PI_LIVE_COMPACT_SHADOW;
+  process.env.PI_LIVE_COMPACT_SHADOW = privacyRoot;
+  const { handlers, ctx } = setup();
+  try {
+    const result = await handlers.turn_end({
+      outcome: "completed",
+      message: { stopReason: "toolUse" },
+      entries: [],
+      context: { contextEntries: contextEntries() },
+    }, {
+      ...ctx,
+      sessionManager: {
+        ...ctx.sessionManager,
+        isPersisted: () => false,
+      },
+    });
+    assert.ok(result?.entries?.length);
+  } finally {
+    if (previousShadow === undefined) delete process.env.PI_LIVE_COMPACT_SHADOW;
+    else process.env.PI_LIVE_COMPACT_SHADOW = previousShadow;
+  }
+  assert.equal(existsSync(join(privacyRoot, "v2")), false);
 });

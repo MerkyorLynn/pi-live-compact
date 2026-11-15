@@ -4,14 +4,20 @@ import { logEvent } from "./telemetry.mjs";
 
 function itemsFromProjection(projection) {
   if (!projection || !Array.isArray(projection.entries)) return [];
-  return projection.entries.map((entry, index) => {
-    const message = Array.isArray(entry.messages) ? entry.messages[0] : entry.message;
-    return {
-      index,
-      sourceId: entry.sourceEntry?.id || entry.sourceId,
+  let index = 0;
+  return projection.entries.flatMap((entry) => {
+    const messages = Array.isArray(entry.messages)
+      ? entry.messages
+      : entry.message
+        ? [entry.message]
+        : [];
+    const sourceId = entry.sourceEntry?.id || entry.sourceId;
+    return messages.filter(Boolean).map((message) => ({
+      index: index++,
+      sourceId,
       message,
-    };
-  }).filter((entry) => entry.message);
+    }));
+  });
 }
 
 function projectionHasCompaction(projection) {
@@ -53,7 +59,11 @@ function cutsFor(event, ctx) {
     compacted,
   });
   const sessionId = ctx.sessionManager?.getSessionId?.();
-  const accepted = applyShadowGate(candidates, (cut) => rememberOriginal(cut, sessionId));
+  const persisted = ctx.sessionManager?.isPersisted?.() !== false;
+  if (!persisted) logEvent({ event: "shadow", result: "skip", reason: "session_not_persisted" });
+  const accepted = applyShadowGate(candidates, (cut) => persisted
+    ? rememberOriginal(cut, sessionId)
+    : "ok");
   return { accepted, candidates: candidates.length, usage, startTokens, reason: "evaluated" };
 }
 
@@ -104,7 +114,7 @@ export default function piLiveCompact(pi) {
           ...result.accepted.map((cut) => ({
             type: "context_edit",
             targetId: cut.targetId,
-            replacement: { content: cut.cardText },
+            replacement: { content: cut.replacementContent ?? cut.cardText },
           })),
         ],
       };
