@@ -32,3 +32,12 @@ test("shadow write failures do not block a cut", () => {
   writeFileSync(blocked, "file");
   assert.equal(rememberOriginal(cut("target"), "session", blocked), "ok");
 });
+
+test("a corrupt existing record keeps same-target protection fail-closed", () => {
+  const root = mkdtempSync(join(tmpdir(), "pi-lc-shadow-corrupt-"));
+  assert.equal(rememberOriginal(cut("target"), "session", root), "ok");
+  const sessionDir = readdirSync(join(root, "v2"))[0];
+  const file = join(root, "v2", sessionDir, readdirSync(join(root, "v2", sessionDir))[0]);
+  writeFileSync(file, "not-json");
+  assert.equal(rememberOriginal(cut("target", "changed"), "session", root), "mismatch");
+});

@@ -3,7 +3,7 @@ import test from "node:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { selectCuts, applyShadowGate, estimateTokens, POINTER_TOKENS, BIG_GATE, CARD_MARK, resolveStartTokens, resolveGuardUserSpans } from "../src/plan.mjs";
+import { selectCuts, applyShadowGate, estimateTokens, POINTER_TOKENS, BIG_GATE, CARD_MARK, CARD_HEADER, resolveStartTokens, resolveGuardUserSpans } from "../src/plan.mjs";
 import { rememberOriginal } from "../src/shadow.mjs";
 
 function result(id, name, text, extra = {}) {
@@ -91,7 +91,7 @@ test("does not cut left of the newest card", () => {
   const text = "x".repeat(8000);
   const entries = indexed([
     round("old", "bash", text),
-    [{ sourceId: "card", message: { role: "toolResult", toolCallId: "card", toolName: "bash", content: [{ type: "text", text: `${CARD_MARK}\n已收` }], isError: false } }],
+    [{ sourceId: "card", message: { role: "toolResult", toolCallId: "card", toolName: "bash", content: [{ type: "text", text: `${CARD_HEADER}\n已收` }], isError: false } }],
     round("mid", "bash", text),
     round("k1", "bash", "s"),
     round("k2", "bash", "s"),
@@ -159,6 +159,16 @@ test("stops small cuts at 650000", () => {
 test("does not cut after compaction when the projection has no user boundary", () => {
   const entries = indexed([1, 2, 3, 4].map((n) => round(`r${n}`, "bash", "x".repeat(8000))));
   assert.equal(selectCuts(entries, { totalTokens: 48000, compacted: true }).length, 0);
+});
+
+test("does not cut the split suffix until a user appears after compaction", () => {
+  const entries = indexed([
+    { sourceId: "compact", sourceEntry: { id: "compact", type: "compaction" }, message: { role: "compactionSummary", content: "summary" } },
+    ...[1, 2, 3, 4].map((n) => round(`suffix${n}`, "bash", "x".repeat(8000))),
+  ]);
+  assert.equal(selectCuts(entries, { totalTokens: 48000, compacted: true }).length, 0);
+  const resumed = indexed([...entries, { sourceId: "new-user", message: { role: "user", content: "continue" } }]);
+  assert.equal(selectCuts(resumed, { totalTokens: 48000, compacted: true }).length, 1);
 });
 
 test("resolves a configurable start line without changing the default constants", () => {

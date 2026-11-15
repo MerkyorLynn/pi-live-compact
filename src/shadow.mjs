@@ -30,14 +30,20 @@ export function rememberOriginal(cut, sessionId, root = shadowRoot()) {
   try {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     if (existsSync(filePath)) {
-      const prior = JSON.parse(readFileSync(filePath, "utf8"));
+      let prior;
+      try {
+        prior = JSON.parse(readFileSync(filePath, "utf8"));
+      } catch (error) {
+        logEvent({ event: "shadow", result: "mismatch", targetId, reason: `invalid_existing_record:${String(error?.message || error)}` });
+        return "mismatch";
+      }
       if (prior.targetId === targetId && prior.sha256 === next) return "ok";
       if (prior.targetId === targetId && prior.sha256 !== next) {
         logEvent({ event: "shadow", result: "mismatch", targetId });
         return "mismatch";
       }
       logEvent({ event: "shadow", result: "unavailable", targetId, reason: "invalid_existing_record" });
-      return "ok";
+      return "mismatch";
     }
     const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
     writeFileSync(tmpPath, JSON.stringify({

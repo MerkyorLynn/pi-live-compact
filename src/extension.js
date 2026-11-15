@@ -14,13 +14,24 @@ function itemsFromProjection(projection) {
   }).filter((entry) => entry.message);
 }
 
+function projectionHasCompaction(projection) {
+  return Array.isArray(projection?.entries) && projection.entries.some((entry) => (
+    entry.sourceEntry?.type === "compaction"
+    || entry.sourceEntry?.type === "compactionSummary"
+    || entry.sourceEntry?.type === "branch_summary"
+    || entry.message?.role === "compactionSummary"
+    || entry.message?.role === "branchSummary"
+    || (Array.isArray(entry.messages) && entry.messages.some((message) => message?.role === "compactionSummary" || message?.role === "branchSummary"))
+  ));
+}
+
 function usageOf(ctx) {
   const usage = ctx.getContextUsage?.();
   if (!usage || !Number.isFinite(usage.tokens) || !Number.isFinite(usage.contextWindow)) return null;
   return usage;
 }
 
-function cutsFor(event, ctx, compacted) {
+function cutsFor(event, ctx) {
   const projection = Array.isArray(event?.context?.contextEntries)
     ? { entries: event.context.contextEntries }
     : ctx.sessionManager?.buildSessionProjection?.();
@@ -30,6 +41,10 @@ function cutsFor(event, ctx, compacted) {
   if (!usage) return { accepted: [], candidates: 0, reason: "usage_unknown" };
   const startTokens = resolveStartTokens(usage.contextWindow);
   if (!shouldDrain(usage.tokens, false, startTokens)) return { accepted: [], candidates: 0, reason: "below_start" };
+  const compacted = projectionHasCompaction(projection);
+  if (compacted && !entries.some((entry) => entry.message?.role === "user")) {
+    return { accepted: [], candidates: 0, reason: "compacted_no_user" };
+  }
   const candidates = selectCuts(entries, {
     totalTokens: usage.tokens,
     drain: true,
@@ -53,24 +68,24 @@ export default function piLiveCompact(pi) {
   });
   pi.on("session_compact_failed", (event) => {
     skipAfterCompact = true;
-    logEvent({ event: "compact_failed", reason: event?.reason || "unknown", aborted: event?.aborted === true, willRetry: event?.willRetry === true });
+    logEvent({ event: "compact_failed", reason: event?.reason || "unknown", aborted: event?.aborted === true, willRetry: event?.willRetry === true, error: String(event?.errorMessage || "").slice(0, 500) });
   });
   pi.on("turn_end", (event, ctx) => {
     try {
-      if (event?.outcome && event.outcome !== "completed") {
-        logEvent({ event: "turn", result: "skip", reason: `outcome_${event.outcome}` });
-        return;
-      }
       if (skipAfterCompact) {
         skipAfterCompact = false;
         logEvent({ event: "turn", result: "skip", reason: "after_compact" });
+        return;
+      }
+      if (event?.outcome && event.outcome !== "completed") {
+        logEvent({ event: "turn", result: "skip", reason: `outcome_${event.outcome}` });
         return;
       }
       if (event?.message?.stopReason === "length") {
         logEvent({ event: "turn", result: "skip", reason: "stop_length" });
         return;
       }
-      const result = cutsFor(event, ctx, false);
+      const result = cutsFor(event, ctx);
       const usage = result.usage;
       logEvent({
         event: "turn",

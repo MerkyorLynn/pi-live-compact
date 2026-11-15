@@ -85,10 +85,40 @@ test("skips the turn after native compaction and length stops", async () => {
   assert.equal(length, undefined);
 });
 
-test("writes bounded telemetry without affecting the handler", () => {
+test("keeps skipping a split-turn projection until a new user message", async () => {
+  const { handlers, ctx } = setup();
+  const noUser = [
+    { sourceEntry: { id: "compact", type: "compaction" }, messages: [{ role: "compactionSummary", content: "summary" }] },
+    ...contextEntries().filter((entry) => entry.messages?.[0]?.role !== "user"),
+  ];
+  await handlers.session_compact({ reason: "threshold", willRetry: false }, ctx);
+  assert.equal(await handlers.turn_end({ outcome: "completed", message: { stopReason: "toolUse" }, entries: [], context: { contextEntries: noUser } }, ctx), undefined);
+  assert.equal(await handlers.turn_end({ outcome: "completed", message: { stopReason: "toolUse" }, entries: [], context: { contextEntries: noUser } }, ctx), undefined);
+  const resumed = await handlers.turn_end({ outcome: "completed", message: { stopReason: "toolUse" }, entries: [], context: { contextEntries: contextEntries() } }, ctx);
+  assert.ok(resumed?.entries?.length);
+});
+
+test("does not leave compaction state stuck after an error turn", async () => {
+  const { handlers, ctx } = setup();
+  const noUser = [
+    { sourceEntry: { id: "compact", type: "compaction" }, messages: [{ role: "compactionSummary", content: "summary" }] },
+    ...contextEntries().filter((entry) => entry.messages?.[0]?.role !== "user"),
+  ];
+  await handlers.session_compact({ reason: "threshold", willRetry: false }, ctx);
+  assert.equal(await handlers.turn_end({ outcome: "error", message: { stopReason: "error" }, entries: [], context: { contextEntries: noUser } }, ctx), undefined);
+  assert.equal(await handlers.turn_end({ outcome: "completed", message: { stopReason: "toolUse" }, entries: [], context: { contextEntries: noUser } }, ctx), undefined);
+});
+
+test("writes bounded telemetry without affecting the handler", async () => {
   const events = readFileSync(process.env.PI_LIVE_COMPACT_LOG, "utf8").trim().split("\n").map(JSON.parse);
   assert.ok(events.some((event) => event.event === "turn"));
   assert.ok(events.some((event) => event.reason === "usage_unknown"));
   assert.ok(events.some((event) => event.reason === "after_compact"));
-  assert.ok(events.some((event) => event.reason === "stop_length"));
+  assert.ok(events.some((event) => event.reason === "compacted_no_user"));
+  const { handlers, ctx } = setup();
+  await handlers.turn_end({ outcome: "completed", message: { stopReason: "length" }, entries: [], context: { contextEntries: contextEntries() } }, ctx);
+  await handlers.session_compact_failed({ reason: "overflow", errorMessage: "test failure", aborted: false, willRetry: false }, ctx);
+  const updated = readFileSync(process.env.PI_LIVE_COMPACT_LOG, "utf8").trim().split("\n").map(JSON.parse);
+  assert.ok(updated.some((event) => event.reason === "stop_length"));
+  assert.ok(updated.some((event) => event.event === "compact_failed" && event.error === "test failure"));
 });
