@@ -43,7 +43,7 @@ function cutsFor(event, ctx) {
   if (!shouldDrain(usage.tokens, false, startTokens)) return { accepted: [], candidates: 0, reason: "below_start" };
   const compacted = projectionHasCompaction(projection);
   if (compacted && !entries.some((entry) => entry.message?.role === "user")) {
-    return { accepted: [], candidates: 0, reason: "compacted_no_user" };
+    return { accepted: [], candidates: 0, usage, startTokens, reason: "compacted_no_user" };
   }
   const candidates = selectCuts(entries, {
     totalTokens: usage.tokens,
