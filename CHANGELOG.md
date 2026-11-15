@@ -1,13 +1,14 @@
-## 0.1.4-rc.1 - Fable 5.2 review candidate
+## 0.1.4 - 2026-11-16
 
-- 候选：按 Pi 1.5.2 的 `turn_end` 投影处理草稿，usage 或窗口未知时不切，原生压缩后下一轮跳过一次，`length` 轮不切。
+- 按 Pi 1.5.2 的 `turn_end` 投影处理草稿，usage 或窗口未知时不切，原生压缩后下一轮跳过一次，`length` 轮不切。
 - 默认不再冻结整条当前 user span；只保留最近 3 个工具轮，单用户长任务也会触发小切。可用 `PI_LIVE_COMPACT_GUARD_USER_SPANS=1` 做保护消融。
 - 修正同一工具轮里长 `read` 结果导致其它长结果永久漏切的问题，floor 只认 toolResult 卡片。
 - 起切线支持 `PI_LIVE_COMPACT_START`；有 context window 时不再用固定 65 万上界阻断 Pi 原生压缩。
 - shadow 备份改为会话/目标哈希键和原子 JSON 写入；备份失败记录日志但不阻塞切割，同一目标正文变化仍保持 mismatch 保护。
 - 卡片补充调用参数、开头、错误行、末尾摘录和取回方法；混合文本/图片结果保留图片块；新增本地 600 权限事件日志。
 - 投影包含多个模型消息时逐条检查，不丢压缩摘要；`--no-session` 等内存会话只做 context edit，不落 shadow 原文。
-- 增加 extension、shadow、投影和混合工具轮回归测试。候选未发布，待机械门禁、代码审核和 GLM-5.3 Flash 20 题复测。
+- 增加 extension、shadow、投影和混合工具轮回归测试。
+- GLM-5.3 Flash 固定 20 题实测：6/20 整题通过、358/391 Rubric、峰值 175,013、37 次真实小切；与同题 Pi 原版对照数据见 `docs/benchmark-pi-glm53-0.1.4-2026-11-16.*`。
 
 ## 0.1.3 - 2026-11-13
 
