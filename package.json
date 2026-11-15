@@ -8,12 +8,12 @@
   "keywords": ["pi-package", "pi-extension", "compaction"],
   "files": ["src", "README.md", "CHANGELOG.md", "LICENSE"],
   "scripts": {
-    "test": "node --test test/plan.test.mjs"
+    "test": "node --test test/*.test.mjs"
   },
   "pi": {
     "extensions": ["./src/extension.js"]
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*"
+    "@earendil-works/pi-coding-agent": "^1.5.2"
   }
 }

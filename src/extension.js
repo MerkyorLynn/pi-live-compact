@@ -1,5 +1,6 @@
-import { selectCuts, applyShadowGate, textOf, estimateTokens, BIG_GATE, shouldDrain } from "./plan.mjs";
+import { selectCuts, applyShadowGate, BIG_GATE, resolveStartTokens, shouldDrain } from "./plan.mjs";
 import { rememberOriginal } from "./shadow.mjs";
+import { logEvent } from "./telemetry.mjs";
 
 function itemsFromProjection(projection) {
   if (!projection || !Array.isArray(projection.entries)) return [];
@@ -13,46 +14,87 @@ function itemsFromProjection(projection) {
   }).filter((entry) => entry.message);
 }
 
-function projectedTokens(ctx, entries) {
-  const usage = ctx.getContextUsage?.();
-  if (usage && Number.isFinite(usage.tokens)) return usage.tokens;
-  return entries.reduce((sum, entry) => sum + estimateTokens(textOf(entry.message?.content)), 0);
-}
-
 function usageOf(ctx) {
   const usage = ctx.getContextUsage?.();
-  if (!usage || !Number.isFinite(usage.tokens)) return null;
+  if (!usage || !Number.isFinite(usage.tokens) || !Number.isFinite(usage.contextWindow)) return null;
   return usage;
 }
 
-function cutsFor(ctx) {
-  const projection = ctx.sessionManager?.buildSessionProjection?.();
+function cutsFor(event, ctx, compacted) {
+  const projection = Array.isArray(event?.context?.contextEntries)
+    ? { entries: event.context.contextEntries }
+    : ctx.sessionManager?.buildSessionProjection?.();
   const entries = itemsFromProjection(projection);
-  if (!entries.length) return [];
+  if (!entries.length) return { accepted: [], candidates: 0, reason: "empty_projection" };
   const usage = usageOf(ctx);
-  const totalTokens = usage?.tokens ?? projectedTokens(ctx, entries);
-  if (!shouldDrain(totalTokens) || totalTokens >= BIG_GATE) return [];
-  const sessionId = ctx.sessionManager.getSessionId?.() || "session";
-  return applyShadowGate(selectCuts(entries, { totalTokens, drain: true }), (cut) => rememberOriginal(cut, sessionId));
+  if (!usage) return { accepted: [], candidates: 0, reason: "usage_unknown" };
+  const startTokens = resolveStartTokens(usage.contextWindow);
+  if (!shouldDrain(usage.tokens, false, startTokens)) return { accepted: [], candidates: 0, reason: "below_start" };
+  const candidates = selectCuts(entries, {
+    totalTokens: usage.tokens,
+    drain: true,
+    startTokens,
+    bigGate: Number.isFinite(usage.contextWindow) ? Infinity : BIG_GATE,
+    compacted,
+  });
+  const sessionId = ctx.sessionManager?.getSessionId?.();
+  const accepted = applyShadowGate(candidates, (cut) => rememberOriginal(cut, sessionId));
+  return { accepted, candidates: candidates.length, usage, startTokens, reason: "evaluated" };
 }
 
 export default function piLiveCompact(pi) {
+  let skipAfterCompact = false;
+  pi.on("session_start", () => {
+    skipAfterCompact = false;
+  });
+  pi.on("session_compact", (event) => {
+    skipAfterCompact = true;
+    logEvent({ event: "compact", reason: event?.reason || "unknown", willRetry: event?.willRetry === true });
+  });
+  pi.on("session_compact_failed", (event) => {
+    skipAfterCompact = true;
+    logEvent({ event: "compact_failed", reason: event?.reason || "unknown", aborted: event?.aborted === true, willRetry: event?.willRetry === true });
+  });
   pi.on("turn_end", (event, ctx) => {
     try {
-      if (event?.outcome && event.outcome !== "completed") return;
-      const accepted = cutsFor(ctx);
-      if (!accepted.length) return;
+      if (event?.outcome && event.outcome !== "completed") {
+        logEvent({ event: "turn", result: "skip", reason: `outcome_${event.outcome}` });
+        return;
+      }
+      if (skipAfterCompact) {
+        skipAfterCompact = false;
+        logEvent({ event: "turn", result: "skip", reason: "after_compact" });
+        return;
+      }
+      if (event?.message?.stopReason === "length") {
+        logEvent({ event: "turn", result: "skip", reason: "stop_length" });
+        return;
+      }
+      const result = cutsFor(event, ctx, false);
+      const usage = result.usage;
+      logEvent({
+        event: "turn",
+        result: result.reason,
+        reason: result.reason,
+        tokens: usage?.tokens ?? null,
+        contextWindow: usage?.contextWindow ?? null,
+        startTokens: result.startTokens ?? null,
+        candidates: result.candidates,
+        accepted: result.accepted.length,
+      });
+      if (!result.accepted.length) return;
       return {
         entries: [
           ...(event.entries || []),
-          ...accepted.map((cut) => ({
+          ...result.accepted.map((cut) => ({
             type: "context_edit",
             targetId: cut.targetId,
             replacement: { content: cut.cardText },
           })),
         ],
       };
-    } catch {
+    } catch (error) {
+      logEvent({ event: "error", error: String(error?.stack || error) });
       return;
     }
   });
