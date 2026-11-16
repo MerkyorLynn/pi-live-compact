@@ -1,6 +1,6 @@
 # Pi Live Compact
 
-![Pi model benchmark](docs/benchmark-pi-models-2026-11-14.png)
+![Pi GLM-5.3 Flash benchmark](docs/benchmark-pi-glm53-0.1.4-2026-11-16.png)
 
 最新 GLM-5.3 Flash release-gate 报告： [逐题 Markdown](docs/benchmark-pi-glm53-0.1.4-2026-11-16.md) · [结构化 JSON](docs/benchmark-pi-glm53-0.1.4-2026-11-16.json)
 
